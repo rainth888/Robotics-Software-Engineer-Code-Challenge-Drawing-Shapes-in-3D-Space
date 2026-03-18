@@ -221,6 +221,43 @@ Or edit `config/shapes.yaml` directly, then rebuild:
 cd ~/dev_ws && colcon build --packages-select avatar_challenge
 ```
 
+### How to Create a New Shape (Step by Step)
+
+1. **Create a YAML file** (e.g. `my_shape.yaml`):
+
+```yaml
+shapes:
+  - name: "my_rectangle"
+    type: "polygon"
+    vertices:
+      - [0.0, 0.0]         # Must start at [0, 0]
+      - [0.15, 0.0]        # 15cm along u-axis
+      - [0.15, 0.08]       # 15cm × 8cm rectangle
+      - [0.0, 0.08]        # back to u = 0
+    position: [0.35, 0.0, 0.35]   # 35cm in front, 35cm high
+    orientation: [0, 0, 0]         # no rotation
+    closed: true
+```
+
+2. **Copy it into the container:**
+
+```bash
+docker cp my_shape.yaml xarm-container:/home/dev/my_shape.yaml
+```
+
+3. **Run it** (MoveIt must already be running in Terminal 1):
+
+```bash
+ros2 run avatar_challenge shape_drawer.py \
+  --ros-args -p config_file:=/home/dev/my_shape.yaml
+```
+
+> **Tips for designing shapes:**
+> - Keep positions within the xArm7 workspace: `x ∈ [0.2, 0.5]`, `y ∈ [-0.3, 0.3]`, `z ∈ [0.1, 0.6]`
+> - First vertex must always be `[0, 0]` (challenge requirement)
+> - Use `orientation: [roll, pitch, yaw]` in radians to tilt the drawing plane
+> - Add `blend: true` for smoother curves (uses 0.002m step instead of 0.005m)
+
 ---
 
 ## Shape Definitions
@@ -298,13 +335,23 @@ shapes:
 
 ## Approach
 
-### Problem Analysis
+### How I Thought About the Problem
 
-The challenge requires tracing 2D shapes on arbitrarily oriented planes in 3D space. This breaks down into three sub-problems:
+The core challenge is bridging two worlds: **simple 2D geometry** (vertices on a flat plane) and **complex 7-DoF robot kinematics** (joint angles, collision avoidance, trajectory timing). My first insight was to separate these cleanly — let the user think purely in 2D, and let MoveIt 2 handle all the robotics complexity.
+
+I started by identifying the three sub-problems:
 
 1. **Coordinate Transformation** — Map 2D vertices `(u, v)` to 3D positions via rotation matrix and translation
 2. **Path Planning** — Compute smooth, collision-free trajectories through the 3D waypoints
 3. **Motion Execution** — Send trajectories to the robot controller for execution
+
+The key question was: *how should the robot move between waypoints?* I realised that drawing requires the end-effector to move in **straight lines** (to produce clean edges), not the curved paths you'd get from joint-space interpolation. This led me to use MoveIt's Cartesian path planning (`GetCartesianPath`) for the actual drawing phase.
+
+However, the robot also needs to reach each shape's starting point, which could be far from its current position. Using Cartesian planning for this large-scale repositioning is unreliable — it can fail near singularities or workspace boundaries. So I adopted a **two-phase strategy**: free-space joint planning to reach the start, then precise Cartesian planning to trace the shape.
+
+For the MoveIt interface, I initially tried `moveit_commander` (the Python wrapper), but discovered it wasn't installed in the Docker container. Rather than fighting installation issues, I went directly to the underlying ROS 2 service and action clients. This turned out to be a better choice — it gave me full control over planning parameters and error handling.
+
+I chose YAML for shape definitions because it's human-readable, easy to edit, and the challenge examples naturally map to a structured format. I added support for both polygons (vertex lists) and arcs (parametric circles) to cover both core and bonus requirements.
 
 ### Two-Phase Motion Strategy
 
@@ -324,14 +371,15 @@ Phase 2: Trace the Shape
 
 ### Key Design Decisions
 
-| Decision                | Choice                                           | Rationale                                                                         |
+| Decision                | Choice                                           | Why                                                                               |
 |-------------------------|--------------------------------------------------|-----------------------------------------------------------------------------------|
-| MoveIt interface        | Direct ROS 2 service/action clients              | `moveit_commander` is not available in the container; direct clients are reliable  |
-| Shape tracing           | Cartesian path (`GetCartesianPath`)              | Drawing requires straight-line end-effector motion between vertices                |
-| Start-point motion      | MoveGroup action (joint-space)                   | Joint-space planning is faster and avoids singularities for large moves            |
-| Fallback strategy       | Per-waypoint MoveGroup if Cartesian coverage < 80% | Ensures shapes are still drawn even in challenging configurations               |
-| EE orientation          | Perpendicular to drawing plane (π flip about X)  | The tool must "face" the drawing surface                                          |
-| Speed                   | 20% velocity/acceleration scaling                | Slower motion for clear visual observation                                        |
+| MoveIt interface        | Direct ROS 2 service/action clients              | `moveit_commander` is not available in the container; direct clients give full control over parameters and error handling |
+| Shape tracing           | Cartesian path (`GetCartesianPath`)              | Drawing requires straight-line EE motion between vertices; joint-space interpolation would produce curved paths |
+| Start-point motion      | MoveGroup action (joint-space RRTConnect)        | Large-scale repositioning is unreliable with Cartesian planning near singularities; joint-space is robust |
+| Fallback strategy       | Per-waypoint MoveGroup if Cartesian coverage < 80% | Some shape/position combos produce partial paths; falling back to point-by-point ensures the shape is still drawn |
+| EE orientation          | Perpendicular to drawing plane (π flip about X)  | The tool tip must point "into" the drawing surface; achieved via `R_shape × R_flip(π, 0, 0)` |
+| Config format           | YAML with validation                             | Human-editable; the `_validate_shape()` method catches errors early with clear messages |
+| Speed                   | 20% velocity/acceleration scaling                | Slow enough for clear visual observation; fast enough for practical testing        |
 
 ### Algorithm
 
@@ -339,23 +387,26 @@ For each shape defined in the YAML config:
 
 ```
 1. Parse shape definition (vertices or arc parameters)
-2. Build rotation matrix R = Rz(yaw) × Ry(pitch) × Rx(roll)
-3. For each 2D vertex (u, v):
+2. Validate: check type, position, orientation, first vertex = [0,0]
+3. Build rotation matrix R = Rz(yaw) × Ry(pitch) × Rx(roll)
+4. For each 2D vertex (u, v):
      p_3d = origin + R × [u, v, 0]
-4. Compute end-effector orientation: q = R_shape × R_flip(π, 0, 0)
-5. If closed, append first vertex to close the shape
-6. Move to first waypoint (joint-space, MoveGroup action)
-7. Compute Cartesian path through remaining waypoints
-8. If fraction ≥ 80%: execute trajectory
-   Else: fall back to per-waypoint MoveGroup moves
+5. Compute end-effector orientation: q = R_shape × R_flip(π, 0, 0)
+6. If closed, append first vertex to close the shape
+7. Publish LINE_STRIP markers in RViz for visual reference
+8. Move to first waypoint (joint-space, MoveGroup action)
+9. Compute Cartesian path through remaining waypoints
+10. If fraction ≥ 80%: execute trajectory
+    Else: fall back to per-waypoint MoveGroup moves
 ```
 
 ### Assumptions
 
-- The robot starts in a reachable default pose
-- All target positions are within the xArm7 workspace (≈ 0.7m reach)
-- The `xarm7_moveit_fake.launch.py` provides all required MoveIt 2 services
+- The robot starts in a reachable default pose (the MoveIt fake simulation home position)
+- All target positions are within the xArm7 workspace (≈ 0.7m reach from base)
+- The `xarm7_moveit_fake.launch.py` provides all required MoveIt 2 services (`/compute_cartesian_path`, `/execute_trajectory`, `/move_action`)
 - Shape vertices define reasonable geometry that doesn't cause self-collision
+- Units are metres (positions, vertices) and radians (orientation angles)
 
 ---
 
