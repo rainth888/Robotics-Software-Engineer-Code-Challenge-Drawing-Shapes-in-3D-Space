@@ -1,0 +1,18 @@
+# Shape 7: Large 5-pointed star (20cm span)
+shapes:
+  - name: "large_star"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.040,  0.060]
+      - [0.000,  0.120]
+      - [0.060,  0.090]
+      - [0.100,  0.150]
+      - [0.080,  0.080]
+      - [0.150,  0.060]
+      - [0.080,  0.040]
+      - [0.100, -0.020]
+      - [0.050,  0.030]
+    position: [0.35, 0.0, 0.50]
+    orientation: [0, 0.3, 0]
+    closed: true

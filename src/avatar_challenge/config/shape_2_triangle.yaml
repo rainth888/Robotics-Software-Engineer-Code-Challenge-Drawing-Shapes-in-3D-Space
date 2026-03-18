@@ -1,0 +1,11 @@
+# Shape 2: Equilateral triangle, 12cm sides
+shapes:
+  - name: "triangle"
+    type: "polygon"
+    vertices:
+      - [0.0,   0.0   ]
+      - [0.120,  0.0   ]
+      - [0.060,  0.104 ]
+    position: [0.35, -0.15, 0.35]
+    orientation: [0, 0, 0]
+    closed: true

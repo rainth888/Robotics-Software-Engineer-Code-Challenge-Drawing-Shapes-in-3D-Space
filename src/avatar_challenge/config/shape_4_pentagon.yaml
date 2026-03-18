@@ -1,0 +1,14 @@
+# Shape 4: Regular pentagon on a tilted plane, with blending
+shapes:
+  - name: "pentagon_tilted"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.095,  0.031]
+      - [0.059,  0.118]
+      - [-0.059, 0.118]
+      - [-0.095, 0.031]
+    position: [0.35, 0.0, 0.40]
+    orientation: [0.3, 0, 0]
+    closed: true
+    blend: true

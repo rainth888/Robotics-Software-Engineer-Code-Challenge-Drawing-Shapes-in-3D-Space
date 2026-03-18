@@ -1,0 +1,12 @@
+# Shape 5: Large diamond (20cm diagonals)
+shapes:
+  - name: "large_diamond"
+    type: "polygon"
+    vertices:
+      - [0.0,   0.0  ]
+      - [0.100,  0.100]
+      - [0.200,  0.0  ]
+      - [0.100, -0.100]
+    position: [0.40, -0.25, 0.25]
+    orientation: [0, 0, 0]
+    closed: true

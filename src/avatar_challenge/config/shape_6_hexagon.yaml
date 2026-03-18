@@ -1,0 +1,15 @@
+# Shape 6: Large hexagon (15cm radius), rotated 30 degrees
+shapes:
+  - name: "large_hexagon"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.150,  0.000]
+      - [0.225,  0.130]
+      - [0.150,  0.260]
+      - [0.000,  0.260]
+      - [-0.075, 0.130]
+    position: [0.30, 0.25, 0.35]
+    orientation: [0, 0, 0.5236]
+    closed: true
+    blend: true

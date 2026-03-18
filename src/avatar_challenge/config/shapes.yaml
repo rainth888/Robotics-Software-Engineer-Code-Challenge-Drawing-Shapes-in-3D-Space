@@ -1,0 +1,110 @@
+# Shape definitions for xArm7 shape drawing challenge
+# Units: metres (positions, vertices) and radians (orientation)
+# Coordinate frame: robot base frame (link_base)
+#   X = forward, Y = left, Z = up
+#
+# Each shape has:
+#   name        - human-readable label
+#   type        - "polygon" (default) or "arc" (bonus)
+#   vertices    - 2D [u, v] list; first vertex must be [0, 0]
+#   position    - [x, y, z] starting point in robot base frame
+#   orientation - [roll, pitch, yaw] defines the 3D drawing plane
+#   closed      - true to close the shape (connect last vertex back to first)
+#   blend       - true to use finer interpolation for smoother motion
+
+shapes:
+  # 10 cm square, rotated 45 degrees about Z axis
+  - name: "square_45deg"
+    type: "polygon"
+    vertices:
+      - [0.0,  0.0  ]
+      - [0.0,  0.100]
+      - [0.100, 0.100]
+      - [0.100, 0.0  ]
+    position: [0.30, 0.0, 0.30]
+    orientation: [0, 0, 0.7854]   # 45 deg yaw
+    closed: true
+
+  # Equilateral triangle, 12 cm sides
+  - name: "triangle"
+    type: "polygon"
+    vertices:
+      - [0.0,   0.0   ]
+      - [0.120,  0.0   ]
+      - [0.060,  0.104 ]
+    position: [0.35, -0.15, 0.35]
+    orientation: [0, 0, 0]
+    closed: true
+
+  # Full circle via arc interpolation (bonus feature)
+  - name: "circle"
+    type: "arc"
+    arc_center: [0.0, 0.0]
+    arc_radius: 0.06
+    arc_start_angle: 0
+    arc_end_angle: 6.2832      # 2*pi
+    arc_num_points: 48
+    position: [0.30, 0.18, 0.30]
+    orientation: [0, 0, 0]
+    closed: true
+
+  # Regular pentagon on a tilted plane, with blending enabled
+  - name: "pentagon_tilted"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.095,  0.031]
+      - [0.059,  0.118]
+      - [-0.059, 0.118]
+      - [-0.095, 0.031]
+    position: [0.35, 0.0, 0.40]
+    orientation: [0.3, 0, 0]    # ~17 deg roll tilt
+    closed: true
+    blend: true
+
+  # --- NEW: Larger shapes for more visible motion ---
+
+  # Large diamond (20 cm diagonals), positioned far left
+  - name: "large_diamond"
+    type: "polygon"
+    vertices:
+      - [0.0,   0.0  ]
+      - [0.100,  0.100]
+      - [0.200,  0.0  ]
+      - [0.100, -0.100]
+    position: [0.40, -0.25, 0.25]
+    orientation: [0, 0, 0]
+    closed: true
+
+  # Large hexagon (15 cm radius), positioned far right
+  - name: "large_hexagon"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.150,  0.000]
+      - [0.225,  0.130]
+      - [0.150,  0.260]
+      - [0.000,  0.260]
+      - [-0.075, 0.130]
+    position: [0.30, 0.25, 0.35]
+    orientation: [0, 0, 0.5236]   # 30 deg yaw
+    closed: true
+    blend: true
+
+  # Large 5-pointed star (20 cm span), positioned high center
+  - name: "large_star"
+    type: "polygon"
+    vertices:
+      - [0.000,  0.000]
+      - [0.040,  0.060]
+      - [0.000,  0.120]
+      - [0.060,  0.090]
+      - [0.100,  0.150]
+      - [0.080,  0.080]
+      - [0.150,  0.060]
+      - [0.080,  0.040]
+      - [0.100, -0.020]
+      - [0.050,  0.030]
+    position: [0.35, 0.0, 0.50]
+    orientation: [0, 0.3, 0]      # ~17 deg pitch tilt
+    closed: true

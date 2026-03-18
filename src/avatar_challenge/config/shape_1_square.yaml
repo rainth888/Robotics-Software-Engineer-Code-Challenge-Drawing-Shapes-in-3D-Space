@@ -1,0 +1,12 @@
+# BIG square for clear visual testing — 25cm sides
+shapes:
+  - name: "big_square"
+    type: "polygon"
+    vertices:
+      - [0.0,   0.0  ]
+      - [0.0,   0.250]
+      - [0.250,  0.250]
+      - [0.250,  0.0  ]
+    position: [0.35, -0.125, 0.30]
+    orientation: [0, 0, 0]
+    closed: true
